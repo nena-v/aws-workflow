@@ -9,7 +9,7 @@ def handler(event, context):
         "statusCode": 200,
         "headers": {"Content-Type": "text/html"},
         "body": f"""
-        <h1>Démo checkout</h1>
+        <h1>Demo checkout</h1>
         <p>version : <b style="font-size:2em">{APP_VERSION}</b></p>
         """,
     }
