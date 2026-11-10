@@ -2,10 +2,10 @@
 $ErrorActionPreference = "Stop"
 
 # --- à adapter ---
-$AwsRegion   = "eu-west-1"
+$AwsRegion   = "us-west-2"
 $Name        = "checkout-demo"
-$GitHubOwner = "mon-orga"
-$GitHubRepo  = "mon-repo"
+$GitHubOwner = "nena-v"
+$GitHubRepo  = "aws-workflow"
 
 # 1. identifiants immuables du propriétaire et du dépôt, pour la trust policy
 $OwnerId = (Invoke-RestMethod "https://api.github.com/users/$GitHubOwner").id
