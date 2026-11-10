@@ -51,7 +51,10 @@ jobs:
           IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
         run: |
           docker build --build-arg APP_VERSION="$IMAGE_TAG" -t "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" app
-          docker push "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          # tags immuables : si l'image existe déjà (relance), on la réutilise
+          if ! aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then
+            docker push "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          fi
       - name: Deploy and smoke test
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
