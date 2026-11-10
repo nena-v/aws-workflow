@@ -3,4 +3,4 @@ FROM public.ecr.aws/lambda/python:3.12
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION
 COPY app.py ${LAMBDA_TASK_ROOT}
-CMD ["app.handlre"]
+CMD ["app.handler"]
