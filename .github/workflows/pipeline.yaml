@@ -1,0 +1,69 @@
+name: Demo pipeline
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: eu-west-1
+  ECR_REPOSITORY: checkout-demo
+  FUNCTION_NAME: checkout-demo
+
+jobs:
+  test:
+    name: Lint and unit tests
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: python -m pytest -v
+
+  deploy:
+    name: Deploy to Lambda
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write   # jeton OIDC
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - id: tag
+        run: echo "image_tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"  # tag = SHA court
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+        run: |
+          docker build --build-arg APP_VERSION="$IMAGE_TAG" -t "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" app
+          docker push "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+      - name: Deploy and smoke test
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          VERSION=$(aws lambda update-function-code --function-name "$FUNCTION_NAME" \
+            --image-uri "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            --publish --query Version --output text)   # nouvelle version immuable
+          aws lambda wait function-updated --function-name "$FUNCTION_NAME"
+          aws lambda update-alias --function-name "$FUNCTION_NAME" --name prod \
+            --function-version "$VERSION"              # bascule du pointeur
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL")
+          echo "Page servie : $(curl -s "$APP_URL")"
+          [ "$STATUS" = "200" ] && curl -s "$APP_URL" | grep -q "$IMAGE_TAG"
