@@ -6,7 +6,7 @@ APP_VERSION = os.environ.get("APP_VERSION", "dev")
 def handler(event, context):
     # page visible pendant la démo : la version servie s'affiche en grand
     return {
-        "statusCode": 200,
+        "statusCode": 201,
         "headers": {"Content-Type": "text/html"},
         "body": f"""
         <h1>Demo checkout</h1>
